@@ -9,49 +9,69 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Generate GitHub App Token
+      # 1️⃣ Generate GitHub App Token (for Repo1)
       - name: Generate GitHub App Token
         id: app-token
         uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ vars.GH_APP_ID}}
+          app-id: ${{ vars.GH_APP_ID }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: RajaNimit27
+          repositories: testGithubAppDeploymentRepo1
 
       # 2️⃣ Install jq
-      - name: Install jq
-        run: sudo apt-get update && sudo apt-get install -y jq
+      - run: sudo apt-get update && sudo apt-get install -y jq
 
-      # 3️⃣ Get latest RUN_ID from Repo A
-      - name: Get Run ID
+      # 3️⃣ Read run_id from payload
+      - name: Set Run ID
         id: run
+        run: echo "run_id=${{ github.event.client_payload.run_id }}" >> $GITHUB_OUTPUT
+
+      # 4️⃣ Wait for pending deployment (IMPORTANT 🔥)
+      - name: Wait for pending deployment
         run: |
-          RESPONSE=$(curl -s \
-            -H "Authorization: Bearer ${{ steps.app-token.outputs.token }}" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/RajaNimit27/testGithubAppDeploymentRepo1/actions/runs)
+          RUN_ID=${{ steps.run.outputs.run_id }}
+          TOKEN=${{ steps.app-token.outputs.token }}
 
-          RUN_ID=$(echo $RESPONSE | jq '.workflow_runs[0].id')
-          echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
+          for i in {1..12}; do
+            echo "Checking pending deployments... attempt $i"
 
-      # 4️⃣ Get ENV_ID (production)
+            RESPONSE=$(curl -s \
+              -H "Authorization: Bearer $TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              https://api.github.com/repos/RajaNimit27/testGithubAppDeploymentRepo1/actions/runs/$RUN_ID/pending_deployments)
+
+            COUNT=$(echo $RESPONSE | jq length)
+
+            if [ "$COUNT" -gt 0 ]; then
+              echo "Deployment ready ✅"
+              break
+            fi
+
+            echo "Waiting ⏳"
+            sleep 10
+          done
+
+      # 5️⃣ Get ENV_ID
       - name: Get Environment ID
         id: env
         run: |
           RESPONSE=$(curl -s \
             -H "Authorization: Bearer ${{ steps.app-token.outputs.token }}" \
-            -H "Accept: application/vnd.github+json" \
             https://api.github.com/repos/RajaNimit27/testGithubAppDeploymentRepo1/environments)
 
           ENV_ID=$(echo $RESPONSE | jq '.environments[] | select(.name=="production") | .id')
           echo "env_id=$ENV_ID" >> $GITHUB_OUTPUT
 
-      # 5️⃣ Approve Deployment
+      # 6️⃣ Approve Deployment
       - name: Approve Deployment
         run: |
+          RUN_ID=${{ steps.run.outputs.run_id }}
+
           curl -X POST \
             -H "Authorization: Bearer ${{ steps.app-token.outputs.token }}" \
             -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/RajaNimit27/testGithubAppDeploymentRepo1/actions/runs/${{ steps.run.outputs.run_id }}/pending_deployments \
+            https://api.github.com/repos/RajaNimit27/testGithubAppDeploymentRepo1/actions/runs/$RUN_ID/pending_deployments \
             -d "{
               \"environment_ids\": [${{ steps.env.outputs.env_id }}],
               \"state\": \"approved\",
