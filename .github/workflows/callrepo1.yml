@@ -66,14 +66,39 @@ jobs:
       # 6️⃣ Approve Deployment
       - name: Approve Deployment
         run: |
-          RUN_ID=${{ steps.run.outputs.run_id }}
 
-          curl -X POST \
-            -H "Authorization: Bearer ${{ steps.app-token.outputs.token }}" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/RajaNimit27/testGithubAppDeploymentRepo1/actions/runs/$RUN_ID/pending_deployments \
-            -d "{
-              \"environment_ids\": [${{ steps.env.outputs.env_id }}],
-              \"state\": \"approved\",
-              \"comment\": \"Approved via GitHub App 🚀\"
-            }"
+            RUN_ID=${{ steps.run.outputs.run_id }}
+            TOKEN=${{ steps.app-token.outputs.token }}
+
+            # Get pending deployments
+            RESPONSE=$(curl -s \
+              -H "Authorization: Bearer $TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              https://api.github.com/repos/RajaNimit27/testGithubAppDeploymentRepo1/actions/runs/$RUN_ID/pending_deployments)
+
+            echo "Pending deployments response:"
+            echo $RESPONSE
+
+            COUNT=$(echo $RESPONSE | jq length)
+
+            if [ "$COUNT" -eq 0 ]; then
+              echo "❌ No pending deployments found. Exiting."
+              exit 1
+            fi
+
+            # Extract ENV IDs dynamically
+            ENV_IDS=$(echo $RESPONSE | jq '[.[].environment.id]')
+
+            echo "Approving environments: $ENV_IDS"
+
+            # Approve
+            curl -X POST \
+              -H "Authorization: Bearer $TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              https://api.github.com/repos/RajaNimit27/testGithubAppDeploymentRepo1/actions/runs/$RUN_ID/pending_deployments \
+              -d "{
+                \"environment_ids\": $ENV_IDS,
+                \"state\": \"approved\",
+                \"comment\": \"Approved via GitHub App 🚀\"
+              }"
+
