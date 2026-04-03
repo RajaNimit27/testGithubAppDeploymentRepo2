@@ -66,7 +66,7 @@ jobs:
         run: |
 
             RUN_ID=${{ steps.run.outputs.run_id }}
-            TOKEN=${{ steps.app-token.outputs.token }}
+            TOKEN=${{ secrets.GH_TOKEN }}
 
             # Get pending deployments
             RESPONSE=$(curl -s \
