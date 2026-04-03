@@ -1,0 +1,58 @@
+name: Approve Deployment via GitHub App
+
+on:
+  workflow_dispatch:
+
+jobs:
+  approve:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ Generate GitHub App Token
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.GH_APP_ID}}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+
+      # 2️⃣ Install jq
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      # 3️⃣ Get latest RUN_ID from Repo A
+      - name: Get Run ID
+        id: run
+        run: |
+          RESPONSE=$(curl -s \
+            -H "Authorization: Bearer ${{ steps.app-token.outputs.token }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/<OWNER>/<REPO_A>/actions/runs)
+
+          RUN_ID=$(echo $RESPONSE | jq '.workflow_runs[0].id')
+          echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
+
+      # 4️⃣ Get ENV_ID (production)
+      - name: Get Environment ID
+        id: env
+        run: |
+          RESPONSE=$(curl -s \
+            -H "Authorization: Bearer ${{ steps.app-token.outputs.token }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/<OWNER>/<REPO_A>/environments)
+
+          ENV_ID=$(echo $RESPONSE | jq '.environments[] | select(.name=="production") | .id')
+          echo "env_id=$ENV_ID" >> $GITHUB_OUTPUT
+
+      # 5️⃣ Approve Deployment
+      - name: Approve Deployment
+        run: |
+          curl -X POST \
+            -H "Authorization: Bearer ${{ steps.app-token.outputs.token }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/<OWNER>/<REPO_A>/actions/runs/${{ steps.run.outputs.run_id }}/pending_deployments \
+            -d "{
+              \"environment_ids\": [${{ steps.env.outputs.env_id }}],
+              \"state\": \"approved\",
+              \"comment\": \"Approved via GitHub App 🚀\"
+            }"
