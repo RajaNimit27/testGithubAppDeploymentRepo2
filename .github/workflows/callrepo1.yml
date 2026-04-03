@@ -27,7 +27,7 @@ jobs:
           RESPONSE=$(curl -s \
             -H "Authorization: Bearer ${{ steps.app-token.outputs.token }}" \
             -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/<OWNER>/<REPO_A>/actions/runs)
+            https://api.github.com/repos/RajaNimit27/testGithubAppDeploymentRepo1/actions/runs)
 
           RUN_ID=$(echo $RESPONSE | jq '.workflow_runs[0].id')
           echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
@@ -39,7 +39,7 @@ jobs:
           RESPONSE=$(curl -s \
             -H "Authorization: Bearer ${{ steps.app-token.outputs.token }}" \
             -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/<OWNER>/<REPO_A>/environments)
+            https://api.github.com/repos/RajaNimit27/testGithubAppDeploymentRepo1/environments)
 
           ENV_ID=$(echo $RESPONSE | jq '.environments[] | select(.name=="production") | .id')
           echo "env_id=$ENV_ID" >> $GITHUB_OUTPUT
@@ -50,7 +50,7 @@ jobs:
           curl -X POST \
             -H "Authorization: Bearer ${{ steps.app-token.outputs.token }}" \
             -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/<OWNER>/<REPO_A>/actions/runs/${{ steps.run.outputs.run_id }}/pending_deployments \
+            https://api.github.com/repos/RajaNimit27/testGithubAppDeploymentRepo1/actions/runs/${{ steps.run.outputs.run_id }}/pending_deployments \
             -d "{
               \"environment_ids\": [${{ steps.env.outputs.env_id }}],
               \"state\": \"approved\",
