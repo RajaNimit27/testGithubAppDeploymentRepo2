@@ -50,30 +50,15 @@ jobs:
           echo "❌ Error: No pending deployments found for Run ID $RUN_ID"
           exit 1
 
-      # 3️⃣ Deployment Approve/Reject karna based on repo1 status
+      # 3️⃣ Deployment Approve karna
       - name: Send Approval Signal
         run: |
           # Payload se variables uthayein
           RUN_ID=${{ github.event.client_payload.run_id }}
-          APPROVAL_STATUS="${{ github.event.client_payload.approval_status }}"
           TOKEN=${{ steps.app-token.outputs.token }}
           REPO="RajaNimit27/testGithubAppDeploymentRepo1"
           
-          # Default to rejected if not specified
-          if [[ -z "$APPROVAL_STATUS" ]]; then
-            APPROVAL_STATUS="rejected"
-          fi
-          
-          # Determine state and comment based on approval status
-          if [[ "$APPROVAL_STATUS" == "approved" ]]; then
-            STATE="approved"
-            COMMENT="Approved via Custom GitHub App Rule ✅"
-          else
-            STATE="rejected"
-            COMMENT="Rejected via Custom GitHub App Rule 🚀"
-          fi
-          
-          echo "Sending $STATE signal for Run ID: $RUN_ID"
+          echo "Approving Deployment for Run ID: $RUN_ID"
 
           # Documentation ke mutabiq direct POST request
           curl -L -X POST \
@@ -81,8 +66,8 @@ jobs:
             -H "Authorization: Bearer $TOKEN" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/$REPO/actions/runs/$RUN_ID/deployment_protection_rule" \
-            -d "{
-              \"environment_name\": \"production\",
-              \"state\": \"$STATE\",
-              \"comment\": \"$COMMENT\"
-            }"
+            -d '{
+              "environment_name": "production",
+              "state": "approved",
+              "comment": "Approved via Custom GitHub App Rule 🚀"
+            }'
