@@ -16,8 +16,7 @@ jobs:
         with:
           app-id: ${{ vars.GH_APP_ID }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
-          # Yahan Repo1 ka owner aayega
-          owner: "RajaNimit27"
+          owner: RajaNimit27
 
       # 2️⃣ Run ID check karna aur loop mein pending status ka wait karna
       - name: Fetch Pending Environments

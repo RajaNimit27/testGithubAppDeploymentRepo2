@@ -2,7 +2,7 @@ name: Approve Deployment via GitHub App
 
 on:
   repository_dispatch:
-    types: [approve-deployment]
+    types: [approve-deployment1]
 
 jobs:
   approve:
