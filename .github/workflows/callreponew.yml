@@ -25,12 +25,8 @@ jobs:
       - name: Set Run ID
         id: run
         run: |
-          if [ -n "${{ github.event.inputs.run_id }}" ]; then
             echo "run_id=${{ github.event.inputs.run_id }}" >> $GITHUB_OUTPUT
-          else
-            echo "run_id=${{ github.event.client_payload.run_id }}" >> $GITHUB_OUTPUT
-          fi
-
+          
       # 2️⃣ Run ID check karna aur loop mein pending status ka wait karna
       - name: Fetch Pending Environments
         id: fetch_pending
