@@ -51,23 +51,23 @@ jobs:
           exit 1
 
       # 3️⃣ Deployment Approve karna
-      - name: Send Approval
-        if: steps.fetch_pending.outputs.env_ids != ''
+      - name: Send Approval Signal
         run: |
+          # Payload se variables uthayein
           RUN_ID=${{ github.event.client_payload.run_id }}
           TOKEN=${{ steps.app-token.outputs.token }}
           REPO="RajaNimit27/testGithubAppDeploymentRepo1"
-          ENV_IDS='${{ steps.fetch_pending.outputs.env_ids }}'
+          
+          echo "Approving Deployment for Run ID: $RUN_ID"
 
-          echo "Approving Run ID $RUN_ID for environments $ENV_IDS..."
-
+          # Documentation ke mutabiq direct POST request
           curl -L -X POST \
-            -H "Authorization: Bearer $TOKEN" \
             -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $TOKEN" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/repos/$REPO/actions/runs/$RUN_ID/pending_deployments" \
-            -d "{
-              \"environment_ids\": $ENV_IDS,
-              \"state\": \"approved\",
-              \"comment\": \"Approved by Custom App Gate 🚀\"
-            }"
+            "https://api.github.com/repos/$REPO/actions/runs/$RUN_ID/deployment_protection_rule" \
+            -d '{
+              "environment_name": "production",
+              "state": "approved",
+              "comment": "Approved via Custom GitHub App Rule 🚀"
+            }'
