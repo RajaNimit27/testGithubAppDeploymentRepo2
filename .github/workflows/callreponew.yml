@@ -1,20 +1,94 @@
-name: Approve Deployment via GitHub App
+# name: Approve Deployment via GitHub App
+
+# on:
+#   workflow_dispatch:
+#     inputs:
+#       run_id:
+#         description: 'Run ID from Repo1'
+#         required: true
+#         type: string
+
+# jobs:
+#   approve:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       # 1️⃣ GitHub App Token generate karna (Sabse zaroori step)
+#       - name: Generate GitHub App Token
+#         id: app-token
+#         uses: actions/create-github-app-token@v3
+#         with:
+#           app-id: ${{ vars.GH_APP_ID }}
+#           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+#           owner: RajaNimit27
+
+#       - name: Set Run ID
+#         id: run
+#         run: |
+#             echo "run_id=${{ github.event.inputs.run_id }}" >> $GITHUB_OUTPUT
+
+#       # 2️⃣ Run ID check karna aur loop mein pending status ka wait karna
+#       - name: Fetch Pending Environments
+#         id: fetch_pending
+#         run: |
+#           RUN_ID=${{ steps.run.outputs.run_id }}
+#           TOKEN=${{ steps.app-token.outputs.token }}
+#           REPO="RajaNimit27/testGithubAppDeploymentRepo1"
+
+#           echo "Checking pending deployments for Run ID: $RUN_ID"
+
+#           RESPONSE=$(curl -s -L \
+#             -H "Authorization: Bearer $TOKEN" \
+#             -H "Accept: application/vnd.github+json" \
+#             "https://api.github.com/repos/$REPO/actions/runs/$RUN_ID/pending_deployments")
+
+#           if echo "$RESPONSE" | jq -e 'type == "array" and length > 0' > /dev/null; then
+#             ENV_IDS=$(echo "$RESPONSE" | jq -c '[.[].environment.id]')
+#             echo "env_ids=$ENV_IDS" >> $GITHUB_OUTPUT
+#             echo "Found pending deployments:"
+#             echo "$RESPONSE" | jq -r '.[] | "  id=\(.environment.id) name=\(.environment.name)"'
+#           else
+#             echo "❌ No pending deployments found for Run ID $RUN_ID"
+#             exit 1
+#           fi
+
+#       # 3️⃣ Deployment Approve karna
+#       - name: Send Approval Signal
+#         run: |
+#           # Payload se variables uthayein
+#           RUN_ID=${{ steps.run.outputs.run_id }}
+#           TOKEN=${{ steps.app-token.outputs.token }}
+#           REPO="RajaNimit27/testGithubAppDeploymentRepo1"
+          
+#           echo "Approving Deployment for Run ID: $RUN_ID"
+
+#           # Documentation ke mutabiq direct POST request
+#           curl -L -X POST \
+#             -H "Accept: application/vnd.github+json" \
+#             -H "Authorization: Bearer $TOKEN" \
+#             -H "X-GitHub-Api-Version: 2022-11-28" \
+#             "https://api.github.com/repos/$REPO/actions/runs/$RUN_ID/deployment_protection_rule" \
+#             -d '{
+#               "environment_name": "production",
+#               "state": "approved",
+#               "comment": "Appro via Custom GitHub App Rule 🚀"
+#             }'
+
+name: Approve/Reject Deployment via Code Logic
 
 on:
   workflow_dispatch:
     inputs:
       run_id:
-        description: 'Run ID from Repo1'
+        description: 'Repo 1 ki Run ID'
         required: true
-        type: string
 
 jobs:
-  approve:
+  gatekeeper-logic:
     runs-on: ubuntu-latest
-
     steps:
-      # 1️⃣ GitHub App Token generate karna (Sabse zaroori step)
-      - name: Generate GitHub App Token
+      # 1️⃣ GitHub App Token generate karna
+      - name: Generate App Token
         id: app-token
         uses: actions/create-github-app-token@v3
         with:
@@ -22,54 +96,57 @@ jobs:
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
           owner: RajaNimit27
 
-      - name: Set Run ID
-        id: run
+      # 2️⃣ Pending Environments fetch karna aur Code se decide karna
+      - name: Evaluate and Process Environments
         run: |
-            echo "run_id=${{ github.event.inputs.run_id }}" >> $GITHUB_OUTPUT
-
-      # 2️⃣ Run ID check karna aur loop mein pending status ka wait karna
-      - name: Fetch Pending Environments
-        id: fetch_pending
-        run: |
-          RUN_ID=${{ steps.run.outputs.run_id }}
-          TOKEN=${{ steps.app-token.outputs.token }}
+          RUN_ID="${{ github.event.inputs.run_id }}"
+          TOKEN="${{ steps.app-token.outputs.token }}"
           REPO="RajaNimit27/testGithubAppDeploymentRepo1"
 
-          echo "Checking pending deployments for Run ID: $RUN_ID"
+          echo "Fetching pending environments for Run ID: $RUN_ID"
 
+          # 1. Pending list nikaalo
           RESPONSE=$(curl -s -L \
             -H "Authorization: Bearer $TOKEN" \
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/$REPO/actions/runs/$RUN_ID/pending_deployments")
 
-          if echo "$RESPONSE" | jq -e 'type == "array" and length > 0' > /dev/null; then
-            ENV_IDS=$(echo "$RESPONSE" | jq -c '[.[].environment.id]')
-            echo "env_ids=$ENV_IDS" >> $GITHUB_OUTPUT
-            echo "Found pending deployments:"
-            echo "$RESPONSE" | jq -r '.[] | "  id=\(.environment.id) name=\(.environment.name)"'
-          else
-            echo "❌ No pending deployments found for Run ID $RUN_ID"
+          # Check agar koi pending deployment hai ya nahi
+          if ! echo "$RESPONSE" | jq -e 'type == "array" and length > 0' > /dev/null; then
+            echo "❌ No pending deployments found."
             exit 1
           fi
 
-      # 3️⃣ Deployment Approve karna
-      - name: Send Approval Signal
-        run: |
-          # Payload se variables uthayein
-          RUN_ID=${{ steps.run.outputs.run_id }}
-          TOKEN=${{ steps.app-token.outputs.token }}
-          REPO="RajaNimit27/testGithubAppDeploymentRepo1"
-          
-          echo "Approving Deployment for Run ID: $RUN_ID"
+          # 2. Loop through each pending environment
+          for env_name in $(echo "$RESPONSE" | jq -r '.[].environment.name'); do
+            
+            # --- YAHAN AAPNA LOGIC LIKHO ---
+            STATE="rejected" # Default state
+            COMMENT="Rejected by Repo 2 Automated Logic"
 
-          # Documentation ke mutabiq direct POST request
+            if [ "$env_name" == "staging" ]; then
+                STATE="approved"
+                COMMENT="Staging pass ho gaya ✅"
+            elif [ "$env_name" == "uat" ]; then
+                STATE="rejected"
+                COMMENT="UAT fail ho gaya ❌"
+            elif [ "$env_name" == "production" ]; then
+                STATE="rejected"
+                COMMENT="Production is not allowed yet 🛑"
+            fi
+            # ------------------------------
+
+            echo "Environment: $env_name -> Decision: $STATE"
+
+            # 3. Decision bhejo
           curl -L -X POST \
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer $TOKEN" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/$REPO/actions/runs/$RUN_ID/deployment_protection_rule" \
-            -d '{
-              "environment_name": "production",
-              "state": "approved",
-              "comment": "Appro via Custom GitHub App Rule 🚀"
-            }'
+              -d "{
+                \"environment_name\": \"$env_name\",
+                \"state\": \"$STATE\",
+                \"comment\": \"$COMMENT\"
+              }"
+          done
