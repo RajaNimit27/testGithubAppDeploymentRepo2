@@ -82,7 +82,7 @@ jobs:
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/$REPO/actions/runs/$RUN_ID/deployment_protection_rule" \
             -d '{
-              "environment_name": "production",
+              "environment_id": "${{ steps.fetch_pending.outputs.env_ids }}",
               "state": "approved",
               "comment": "Appro via Custom GitHub App Rule 🚀"
             }'
