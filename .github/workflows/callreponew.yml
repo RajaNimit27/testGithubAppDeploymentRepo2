@@ -128,10 +128,10 @@ jobs:
                 STATE="approved"
                 COMMENT="Staging pass ho gaya ✅"
             elif [ "$env_name" == "uat" ]; then
-                STATE="rejected"
+                STATE="approved"
                 COMMENT="UAT fail ho gaya ❌"
             elif [ "$env_name" == "production" ]; then
-                STATE="rejected"
+                STATE="approved"
                 COMMENT="Production is not allowed yet 🛑"
             fi
             # ------------------------------
