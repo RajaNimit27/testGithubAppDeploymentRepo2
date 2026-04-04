@@ -1,6 +1,12 @@
 name: Approve Deployment via GitHub App
 
 on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Run ID from Repo1'
+        required: true
+        type: string
   repository_dispatch:
     types: [approve-deployment]
 
@@ -18,11 +24,20 @@ jobs:
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
           owner: RajaNimit27
 
+      - name: Set Run ID
+        id: run
+        run: |
+          if [ -n "${{ github.event.inputs.run_id }}" ]; then
+            echo "run_id=${{ github.event.inputs.run_id }}" >> $GITHUB_OUTPUT
+          else
+            echo "run_id=${{ github.event.client_payload.run_id }}" >> $GITHUB_OUTPUT
+          fi
+
       # 2️⃣ Run ID check karna aur loop mein pending status ka wait karna
       - name: Fetch Pending Environments
         id: fetch_pending
         run: |
-          RUN_ID=${{ github.event.client_payload.run_id }}
+          RUN_ID=${{ steps.run.outputs.run_id }}
           TOKEN=${{ steps.app-token.outputs.token }}
           REPO="RajaNimit27/testGithubAppDeploymentRepo1"
 
@@ -54,7 +69,7 @@ jobs:
       - name: Send Approval Signal
         run: |
           # Payload se variables uthayein
-          RUN_ID=${{ github.event.client_payload.run_id }}
+          RUN_ID=${{ steps.run.outputs.run_id }}
           TOKEN=${{ steps.app-token.outputs.token }}
           REPO="RajaNimit27/testGithubAppDeploymentRepo1"
           
@@ -68,6 +83,6 @@ jobs:
             "https://api.github.com/repos/$REPO/actions/runs/$RUN_ID/deployment_protection_rule" \
             -d '{
               "environment_name": "production",
-              "state": "rejected",
-              "comment": "Rejected via Custom GitHub App Rule 🚀"
+              "state": "approved",
+              "comment": "Appro via Custom GitHub App Rule 🚀"
             }'
