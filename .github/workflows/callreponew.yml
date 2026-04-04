@@ -37,27 +37,20 @@ jobs:
 
           echo "Checking pending deployments for Run ID: $RUN_ID"
           
-          # 15 attempts (2.5 mins max) tak wait karenge
-          for i in {1..15}; do
             RESPONSE=$(curl -s -L \
               -H "Authorization: Bearer $TOKEN" \
               -H "Accept: application/vnd.github+json" \
               "https://api.github.com/repos/$REPO/actions/runs/$RUN_ID/pending_deployments")
             
-            # Agar response array hai aur empty nahi hai
-            if echo "$RESPONSE" | jq -e 'type == "array" and length > 0' > /dev/null; then
+                        if echo "$RESPONSE" | jq -e 'type == "array" and length > 0' > /dev/null; then
               ENV_IDS=$(echo "$RESPONSE" | jq -c '[.[].environment.id]')
               echo "env_ids=$ENV_IDS" >> $GITHUB_OUTPUT
-              echo "Found pending environment IDs: $ENV_IDS ✅"
-              exit 0
-            fi
-
-            echo "Attempt $i: Pending deployment abhi tak reflect nahi hui... ⏳"
-            sleep 10
-          done
-
-          echo "❌ Error: No pending deployments found for Run ID $RUN_ID"
+              echo "Found pending deployments:"
+            echo "$RESPONSE" | jq -r '.[] | "  id=\(.environment.id) name=\(.environment.name)"'
+          else
+            echo "❌ No pending deployments found for Run ID $RUN_ID"
           exit 1
+fi
 
       # 3️⃣ Deployment Approve karna
       - name: Send Approval Signal
