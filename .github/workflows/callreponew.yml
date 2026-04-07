@@ -68,6 +68,6 @@ jobs:
             "https://api.github.com/repos/$REPO/actions/runs/$RUN_ID/deployment_protection_rule" \
             -d '{
               "environment_name": "production",
-              "state": "rejected",
-              "comment": "Rejected via Custom GitHub App Rule 🚀"
+              "state": "approved",
+              "comment": "Approved via Custom GitHub App Rule 🚀"
             }'
